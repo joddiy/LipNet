@@ -7,9 +7,13 @@ import skvideo.io
 import dlib
 from lipnet.lipreading.aligns import Align
 
+
 class VideoAugmenter(object):
     @staticmethod
     def split_words(video, align):
+        """
+        每一个frame切割成(video,align)
+        """
         video_aligns = []
         for sub in align.align:
             # Create new video
@@ -18,26 +22,34 @@ class VideoAugmenter(object):
             _video.mouth = video.mouth[sub[0]:sub[1]]
             _video.set_data(_video.mouth)
             # Create new align
-            _align = Align(align.absolute_max_string_len, align.label_func).from_array([(0, sub[1]-sub[0], sub[2])])
+            # offset 从 0 到该 align 长度
+            _align = Align(align.absolute_max_string_len, align.label_func).from_array([(0, sub[1] - sub[0], sub[2])])
             # Append
             video_aligns.append((_video, _align))
         return video_aligns
 
     @staticmethod
     def merge(video_aligns):
+        """
+        把多个video+align合并到一个
+        """
         vsample = video_aligns[0][0]
         asample = video_aligns[0][1]
         video = Video(vsample.vtype, vsample.face_predictor_path)
+        # 无长度的三层frame
         video.face = np.ones((0, vsample.face.shape[1], vsample.face.shape[2], vsample.face.shape[3]), dtype=np.uint8)
-        video.mouth = np.ones((0, vsample.mouth.shape[1], vsample.mouth.shape[2], vsample.mouth.shape[3]), dtype=np.uint8)
+        video.mouth = np.ones((0, vsample.mouth.shape[1], vsample.mouth.shape[2], vsample.mouth.shape[3]),
+                              dtype=np.uint8)
         align = []
         inc = 0
         for _video, _align in video_aligns:
+            # 在0维上插入
             video.face = np.concatenate((video.face, _video.face), 0)
             video.mouth = np.concatenate((video.mouth, _video.mouth), 0)
             for sub in _align.align:
-                _sub = (sub[0]+inc, sub[1]+inc, sub[2])
+                _sub = (sub[0] + inc, sub[1] + inc, sub[2])
                 align.append(_sub)
+            # 全局offset
             inc = align[-1][1]
         video.set_data(video.mouth)
         align = Align(asample.absolute_max_string_len, asample.label_func).from_array(align)
@@ -45,17 +57,26 @@ class VideoAugmenter(object):
 
     @staticmethod
     def pick_subsentence(video, align, length):
+        """
+        随机挑选长度句子
+        """
         split = VideoAugmenter.split_words(video, align)
         start = np.random.randint(0, align.word_length - length)
-        return VideoAugmenter.merge(split[start:start+length])
+        return VideoAugmenter.merge(split[start:start + length])
 
     @staticmethod
     def pick_word(video, align):
+        """
+        ???
+        """
         video_aligns = np.array(VideoAugmenter.split_words(video, align))
         return video_aligns[np.random.randint(video_aligns.shape[0], size=2), :][0]
 
     @staticmethod
     def horizontal_flip(video):
+        """
+        在第二个轴上翻转（上下翻转）
+        """
         _video = Video(video.vtype, video.face_predictor_path)
         _video.face = np.flip(video.face, 2)
         _video.mouth = np.flip(video.mouth, 2)
@@ -64,12 +85,15 @@ class VideoAugmenter(object):
 
     @staticmethod
     def temporal_jitter(video, probability):
-        changes = [] # [(frame_i, type=del/dup)]
+        """
+        0-prob/2的概率删掉，prob/2-prob的概率double
+        """
+        changes = []  # [(frame_i, type=del/dup)]
         t = video.length
         for i in range(t):
-            if np.random.ranf() <= probability/2:
+            if np.random.ranf() <= probability / 2:
                 changes.append((i, 'del'))
-            if probability/2 < np.random.ranf() <= probability:
+            if probability / 2 < np.random.ranf() <= probability:
                 changes.append((i, 'dup'))
         _face = np.copy(video.face)
         _mouth = np.copy(video.mouth)
@@ -92,10 +116,15 @@ class VideoAugmenter(object):
 
     @staticmethod
     def pad(video, length):
+        """
+        pad 到 length
+        """
         pad_length = max(length - video.length, 0)
         video_length = min(length, video.length)
-        face_padding = np.ones((pad_length, video.face.shape[1], video.face.shape[2], video.face.shape[3]), dtype=np.uint8) * 0
-        mouth_padding = np.ones((pad_length, video.mouth.shape[1], video.mouth.shape[2], video.mouth.shape[3]), dtype=np.uint8) * 0
+        face_padding = np.ones((pad_length, video.face.shape[1], video.face.shape[2], video.face.shape[3]),
+                               dtype=np.uint8) * 0
+        mouth_padding = np.ones((pad_length, video.mouth.shape[1], video.mouth.shape[2], video.mouth.shape[3]),
+                                dtype=np.uint8) * 0
         _video = Video(video.vtype, video.face_predictor_path)
         _video.face = np.concatenate((video.face[0:video_length], face_padding), 0)
         _video.mouth = np.concatenate((video.mouth[0:video_length], mouth_padding), 0)
@@ -111,21 +140,25 @@ class Video(object):
         self.vtype = vtype
 
     def from_frames(self, path):
+        # 从图片搜集
         frames_path = sorted([os.path.join(path, x) for x in os.listdir(path)])
         frames = [ndimage.imread(frame_path) for frame_path in frames_path]
         self.handle_type(frames)
         return self
 
     def from_video(self, path):
+        # 从视频收集
         frames = self.get_video_frames(path)
         self.handle_type(frames)
         return self
 
     def from_array(self, frames):
+        # 从数组收集
         self.handle_type(frames)
         return self
 
     def handle_type(self, frames):
+        # 数组中存储的数据区域
         if self.vtype == 'mouth':
             self.process_frames_mouth(frames)
         elif self.vtype == 'face':
@@ -136,6 +169,7 @@ class Video(object):
     def process_frames_face(self, frames):
         detector = dlib.get_frontal_face_detector()
         predictor = dlib.shape_predictor(self.face_predictor_path)
+        # 进一步提取嘴部区域
         mouth_frames = self.get_frames_mouth(detector, predictor, frames)
         self.face = np.array(frames)
         self.mouth = np.array(mouth_frames)
@@ -149,6 +183,7 @@ class Video(object):
     def get_frames_mouth(self, detector, predictor, frames):
         MOUTH_WIDTH = 100
         MOUTH_HEIGHT = 50
+
         HORIZONTAL_PAD = 0.19
         normalize_ratio = None
         mouth_frames = []
@@ -158,24 +193,25 @@ class Video(object):
             for k, d in enumerate(dets):
                 shape = predictor(frame, d)
                 i = -1
-            if shape is None: # Detector doesn't detect face, just return as is
+            if shape is None:  # Detector doesn't detect face, just return as is
                 return frames
             mouth_points = []
             for part in shape.parts():
                 i += 1
-                if i < 48: # Only take mouth region
+                if i < 48:  # Only take mouth region
                     continue
-                mouth_points.append((part.x,part.y))
+                mouth_points.append((part.x, part.y))
             np_mouth_points = np.array(mouth_points)
 
             mouth_centroid = np.mean(np_mouth_points[:, -2:], axis=0)
 
+            # 多取一部分
             if normalize_ratio is None:
                 mouth_left = np.min(np_mouth_points[:, :-1]) * (1.0 - HORIZONTAL_PAD)
                 mouth_right = np.max(np_mouth_points[:, :-1]) * (1.0 + HORIZONTAL_PAD)
 
                 normalize_ratio = MOUTH_WIDTH / float(mouth_right - mouth_left)
-
+            # normalize 到 100*50区域
             new_img_shape = (int(frame.shape[0] * normalize_ratio), int(frame.shape[1] * normalize_ratio))
             resized_img = imresize(frame, new_img_shape)
 
@@ -199,13 +235,13 @@ class Video(object):
     def set_data(self, frames):
         data_frames = []
         for frame in frames:
-            frame = frame.swapaxes(0,1) # swap width and height to form format W x H x C
+            frame = frame.swapaxes(0, 1)  # swap width and height to form format W x H x C
             if len(frame.shape) < 3:
-                frame = np.array([frame]).swapaxes(0,2).swapaxes(0,1) # Add grayscale channel
+                frame = np.array([frame]).swapaxes(0, 2).swapaxes(0, 1)  # Add grayscale channel ???
             data_frames.append(frame)
         frames_n = len(data_frames)
-        data_frames = np.array(data_frames) # T x W x H x C
+        data_frames = np.array(data_frames)  # T x W x H x C
         if K.image_data_format() == 'channels_first':
-            data_frames = np.rollaxis(data_frames, 3) # C x T x W x H
+            data_frames = np.rollaxis(data_frames, 3)  # C x T x W x H
         self.data = data_frames
         self.length = frames_n

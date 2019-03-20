@@ -1,5 +1,6 @@
 from keras import backend as K
 
+
 # Actual loss calculation
 def ctc_lambda_func(args):
     y_pred, labels, input_length, label_length = args

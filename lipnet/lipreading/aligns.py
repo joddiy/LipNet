@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Align(object):
     def __init__(self, absolute_max_string_len=32, label_func=None):
         self.label_func = label_func
@@ -8,7 +9,7 @@ class Align(object):
     def from_file(self, path):
         with open(path, 'r') as f:
             lines = f.readlines()
-        align = [(int(y[0])/1000, int(y[1])/1000, y[2]) for y in [x.strip().split(" ") for x in lines]]
+        align = [(int(y[0]) / 1000, int(y[1]) / 1000, y[2]) for y in [x.strip().split(" ") for x in lines]]
         self.build(align)
         return self
 
@@ -17,7 +18,7 @@ class Align(object):
         return self
 
     def build(self, align):
-        self.align = self.strip(align, ['sp','sil'])
+        self.align = self.strip(align, ['sp', 'sil'])
         self.sentence = self.get_sentence(align)
         self.label = self.get_label(self.sentence)
         self.padded_label = self.get_padded_label(self.label)
@@ -32,7 +33,7 @@ class Align(object):
         return self.label_func(sentence)
 
     def get_padded_label(self, label):
-        padding = np.ones((self.absolute_max_string_len-len(label))) * -1
+        padding = np.ones((self.absolute_max_string_len - len(label))) * -1
         return np.concatenate((np.array(label), padding), axis=0)
 
     @property

@@ -1,6 +1,7 @@
 import numpy as np
 from lipnet.lipreading.videos import VideoAugmenter
 
+
 class Curriculum(object):
     def __init__(self, rules):
         self.rules = rules
@@ -28,5 +29,6 @@ class Curriculum(object):
         return video, align, video_unpadded_length
 
     def __str__(self):
-        return "{}(train: {}, sentence_length: {}, flip_probability: {}, jitter_probability: {})"\
-            .format(self.__class__.__name__, self.train, self.sentence_length, self.flip_probability, self.jitter_probability)
+        return "{}(train: {}, sentence_length: {}, flip_probability: {}, jitter_probability: {})" \
+            .format(self.__class__.__name__, self.train, self.sentence_length, self.flip_probability,
+                    self.jitter_probability)

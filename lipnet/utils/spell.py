@@ -2,6 +2,7 @@ import re
 import string
 from collections import Counter
 
+
 # Source: https://github.com/commonsense/metanl/blob/master/metanl/token_utils.py
 def untokenize(words):
     """
@@ -11,18 +12,20 @@ def untokenize(words):
     except for line breaks.
     """
     text = ' '.join(words)
-    step1 = text.replace("`` ", '"').replace(" ''", '"').replace('. . .',  '...')
+    step1 = text.replace("`` ", '"').replace(" ''", '"').replace('. . .', '...')
     step2 = step1.replace(" ( ", " (").replace(" ) ", ") ")
     step3 = re.sub(r' ([.,:;?!%]+)([ \'"`])', r"\1\2", step2)
     step4 = re.sub(r' ([.,:;?!%]+)$', r"\1", step3)
     step5 = step4.replace(" '", "'").replace(" n't", "n't").replace(
-         "can not", "cannot")
+        "can not", "cannot")
     step6 = step5.replace(" ` ", " '")
     return step6.strip()
+
 
 # Source: https://stackoverflow.com/questions/367155/splitting-a-string-into-words-and-punctuation
 def tokenize(text):
     return re.findall(r"\w+|[^\w\s]", text, re.UNICODE)
+
 
 # Source: http://norvig.com/spell-correct.html (with some modifications)
 class Spell(object):
@@ -52,12 +55,12 @@ class Spell(object):
 
     def edits1(self, word):
         "All edits that are one edit away from `word`."
-        letters    = 'abcdefghijklmnopqrstuvwxyz'
-        splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
-        deletes    = [L + R[1:]               for L, R in splits if R]
-        transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
-        replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
-        inserts    = [L + c + R               for L, R in splits for c in letters]
+        letters = 'abcdefghijklmnopqrstuvwxyz'
+        splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+        deletes = [L + R[1:] for L, R in splits if R]
+        transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R) > 1]
+        replaces = [L + c + R[1:] for L, R in splits if R for c in letters]
+        inserts = [L + c + R for L, R in splits for c in letters]
         return set(deletes + transposes + replaces + inserts)
 
     def edits2(self, word):

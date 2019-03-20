@@ -1,6 +1,7 @@
 from keras import backend as K
 import numpy as np
 
+
 def _decode(y_pred, input_length, greedy=True, beam_width=100, top_paths=1):
     """Decodes the output of a softmax.
     Can use either greedy search (also known as best path)
@@ -29,9 +30,10 @@ def _decode(y_pred, input_length, greedy=True, beam_width=100, top_paths=1):
     decoded = K.ctc_decode(y_pred=y_pred, input_length=input_length,
                            greedy=greedy, beam_width=beam_width, top_paths=top_paths)
     paths = [path.eval(session=K.get_session()) for path in decoded[0]]
-    logprobs  = decoded[1].eval(session=K.get_session())
+    logprobs = decoded[1].eval(session=K.get_session())
 
     return (paths, logprobs)
+
 
 def decode(y_pred, input_length, greedy=True, beam_width=100, top_paths=1, **kwargs):
     language_model = kwargs.get('language_model', None)
@@ -47,11 +49,12 @@ def decode(y_pred, input_length, greedy=True, beam_width=100, top_paths=1, **kwa
         result = paths[0]
     return result
 
+
 class Decoder(object):
     def __init__(self, greedy=True, beam_width=100, top_paths=1, **kwargs):
-        self.greedy         = greedy
-        self.beam_width     = beam_width
-        self.top_paths      = top_paths
+        self.greedy = greedy
+        self.beam_width = beam_width
+        self.top_paths = top_paths
         self.language_model = kwargs.get('language_model', None)
         self.postprocessors = kwargs.get('postprocessors', [])
 
