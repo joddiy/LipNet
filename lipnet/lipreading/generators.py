@@ -1,3 +1,8 @@
+from lipnet.lipreading.helpers import text_to_labels
+from lipnet.lipreading.videos import Video
+from lipnet.lipreading.aligns import Align
+from lipnet.helpers.threadsafe import threadsafe_generator
+from lipnet.helpers.list import get_list_safe
 from keras import backend as K
 import numpy as np
 import keras
@@ -87,7 +92,6 @@ class BasicGenerator(keras.callbacks.Callback):
                 raise err
             except Exception as e:
                 print(video_path)
-                raise e
                 print("Error loading video: " + video_path)
                 continue
             if K.image_data_format() == 'channels_first' and video.data.shape != (
@@ -99,6 +103,7 @@ class BasicGenerator(keras.callbacks.Callback):
                     self.frames_n, self.img_w, self.img_h, self.img_c):
                 print("Video " + video_path + " has incorrect shape " + str(video.data.shape) + ", must be " + str(
                     (self.frames_n, self.img_w, self.img_h, self.img_c)) + "")
+                ## todo padding length to 90
                 continue
             video_list.append(video_path)
         return video_list
@@ -108,21 +113,37 @@ class BasicGenerator(keras.callbacks.Callback):
         for video_path in video_list:
             video_id = os.path.splitext(video_path)[0].split('/')[-1]
             align_path = os.path.join(self.align_path, video_id) + ".align"
-            align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels).from_file(align_path)
+            align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels, self.align_hash).from_file(
+                align_path)
         return align_hash
+
+    def enumerate_align_map(self, video_list):
+        align_map = {}
+        for video_path in video_list:
+            video_id = os.path.splitext(video_path)[0].split('/')[-1]
+            align_path = os.path.join(self.align_path, video_id) + ".align"
+            with open(align_path, 'r', encoding='utf-8-sig') as f:
+                lines = f.read().splitlines()
+            sentences = "".join(
+                [y[2] for y in [x.strip().split(" ") for x in lines if len(x.strip()) != 0] if y[2] != 'sil'])
+            for c in sentences:
+                if c not in align_map:
+                    align_map[c] = len(align_map) + 1
+        return align_map
 
     def build_dataset(self):
         if os.path.isfile(self.get_cache_path()):
             print("\nLoading dataset list from cache...")
             with open(self.get_cache_path(), 'rb') as fp:
-                self.train_list, self.val_list, self.align_hash = pickle.load(fp)
+                self.train_list, self.val_list, self.align_hash, self.align_map = pickle.load(fp)
         else:
             print("\nEnumerating dataset list from disk...")
             self.train_list = self.enumerate_videos(os.path.join(self.train_path, '*', '*'))
             self.val_list = self.enumerate_videos(os.path.join(self.val_path, '*', '*'))
+            self.align_map = self.enumerate_align_map(self.train_list + self.val_list)
             self.align_hash = self.enumerate_align_hash(self.train_list + self.val_list)
             with open(self.get_cache_path(), 'wb') as fp:
-                pickle.dump((self.train_list, self.val_list, self.align_hash), fp)
+                pickle.dump((self.train_list, self.val_list, self.align_hash, self.align_map), fp)
 
         print("Found {} videos for training.".format(self.training_size))
         print("Found {} videos for validation.".format(self.validation_size))
@@ -256,7 +277,7 @@ class RandomSplitGenerator(BasicGenerator):
         if os.path.isfile(self.get_cache_path()):
             print("\nLoading dataset list from cache...")
             with open(self.get_cache_path(), 'rb') as fp:
-                self.train_list, self.val_list, self.align_hash = pickle.load(fp)
+                self.train_list, self.val_list, self.align_hash, self.align_map = pickle.load(fp)
         else:
             print("\nEnumerating dataset list from disk...")
             video_list = self.enumerate_videos(os.path.join(self.video_path, '*', '*'))
@@ -267,9 +288,10 @@ class RandomSplitGenerator(BasicGenerator):
                 training_size = len(video_list) - int(self.val_split * len(video_list))
             self.train_list = video_list[0:training_size]
             self.val_list = video_list[training_size:]
+            self.align_map = self.enumerate_align_map(self.train_list + self.val_list)
             self.align_hash = self.enumerate_align_hash(self.train_list + self.val_list)
             with open(self.get_cache_path(), 'wb') as fp:
-                pickle.dump((self.train_list, self.val_list, self.align_hash), fp)
+                pickle.dump((self.train_list, self.val_list, self.align_hash, self.align_map), fp)
 
         print("Found {} videos for training.".format(self.training_size))
         print("Found {} videos for validation.".format(self.validation_size))
