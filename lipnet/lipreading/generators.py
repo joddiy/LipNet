@@ -94,16 +94,15 @@ class BasicGenerator(keras.callbacks.Callback):
                 print(video_path)
                 print("Error loading video: " + video_path)
                 continue
-            if K.image_data_format() == 'channels_first' and video.data.shape != (
-                    self.img_c, self.frames_n, self.img_w, self.img_h):
+            if K.image_data_format() == 'channels_first' and video.data.shape[0] != self.img_c and video.data.shape[
+                2] != self.img_w and video.data.shape[3] != self.img_h and self.frames_n > 100:
                 print("Video " + video_path + " has incorrect shape " + str(video.data.shape) + ", must be " + str(
-                    (self.img_c, self.frames_n, self.img_w, self.img_h)) + "")
+                    (self.img_c, "<" + str(self.frames_n), self.img_w, self.img_h)) + "")
                 continue
-            if K.image_data_format() != 'channels_first' and video.data.shape != (
-                    self.frames_n, self.img_w, self.img_h, self.img_c):
+            if K.image_data_format() != 'channels_first' and video.data.shape[1] != self.img_w and video.data.shape[
+                2] != self.img_h and video.data.shape[3] != self.img_c and self.frames_n > 100:
                 print("Video " + video_path + " has incorrect shape " + str(video.data.shape) + ", must be " + str(
-                    (self.frames_n, self.img_w, self.img_h, self.img_c)) + "")
-                ## todo padding length to 90
+                    ("<" + str(self.frames_n), self.img_w, self.img_h, self.img_c)) + "")
                 continue
             video_list.append(video_path)
         return video_list
@@ -112,7 +111,7 @@ class BasicGenerator(keras.callbacks.Callback):
         align_hash = {}
         for video_path in video_list:
             video_id = os.path.splitext(video_path)[0].split('/')[-1]
-            align_path = os.path.join(self.align_path, video_id) + ".align"
+            align_path = os.path.join(self.align_path, video_id) + ".txt"
             align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels, self.align_hash).from_file(
                 align_path)
         return align_hash
@@ -121,7 +120,7 @@ class BasicGenerator(keras.callbacks.Callback):
         align_map = {}
         for video_path in video_list:
             video_id = os.path.splitext(video_path)[0].split('/')[-1]
-            align_path = os.path.join(self.align_path, video_id) + ".align"
+            align_path = os.path.join(self.align_path, video_id) + ".txt"
             with open(align_path, 'r', encoding='utf-8-sig') as f:
                 lines = f.read().splitlines()
             sentences = "".join(
@@ -280,7 +279,7 @@ class RandomSplitGenerator(BasicGenerator):
                 self.train_list, self.val_list, self.align_hash, self.align_map = pickle.load(fp)
         else:
             print("\nEnumerating dataset list from disk...")
-            video_list = self.enumerate_videos(os.path.join(self.video_path, '*', '*'))
+            video_list = self.enumerate_videos(os.path.join(self.video_path, '*', '*.MP4'))
             np.random.shuffle(video_list)  # Random the video list before splitting
             if (self.val_split > 1):  # If val_split is not a probability
                 training_size = len(video_list) - self.val_split

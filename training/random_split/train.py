@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append(os.getcwd())
+
 from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, CSVLogger, ModelCheckpoint
 from lipnet.lipreading.generators import RandomSplitGenerator
@@ -9,18 +14,17 @@ from lipnet.utils.spell import Spell
 from lipnet.model2 import LipNet
 import numpy as np
 import datetime
-import os
 
 np.random.seed(55)
 
-CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-DATASET_DIR = os.path.join(CURRENT_PATH, 'datasets')
+CURRENT_PATH = os.path.join(os.getcwd(), 'assets')
+DATASET_DIR = os.path.join(CURRENT_PATH, 'datasets2')
 OUTPUT_DIR = os.path.join(CURRENT_PATH, 'results')
 LOG_DIR = os.path.join(CURRENT_PATH, 'logs')
 
 PREDICT_GREEDY = False
 PREDICT_BEAM_WIDTH = 200
-PREDICT_DICTIONARY = os.path.join(CURRENT_PATH, '..', '..', 'common', 'dictionaries', 'grid.txt')
+PREDICT_DICTIONARY = os.path.join(CURRENT_PATH, '..', 'common', 'dictionaries', 'grid.txt')
 
 
 def curriculum_rules(epoch):
@@ -34,7 +38,7 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
                                    img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
                                    absolute_max_string_len=absolute_max_string_len,
                                    curriculum=curriculum, start_epoch=start_epoch).build(val_split=0.2)
-
+    return
     lipnet = LipNet(img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
                     absolute_max_string_len=absolute_max_string_len, output_size=lip_gen.get_output_size())
     lipnet.summary()
@@ -75,4 +79,4 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
 
 if __name__ == '__main__':
     run_name = datetime.datetime.now().strftime('%Y:%m:%d:%H:%M:%S')
-    train(run_name, 0, 20, 3, 100, 50, 90, 32, 50)
+    train(run_name, 0, 20, 3, 100, 50, 100, 32, 50)
