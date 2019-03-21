@@ -39,10 +39,10 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
                                    absolute_max_string_len=absolute_max_string_len,
                                    curriculum=curriculum, start_epoch=start_epoch).build(val_split=0.2)
 
-    for item in lip_gen.next_train():
-        print(item[0]['the_input'])
-        print(item[0]['the_labels'])
-        break
+    # for item in lip_gen.next_train():
+    #     print(item[0]['the_input'])
+    #     print(item[0]['the_labels'])
+    #     break
     lipnet = LipNet(img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
                     absolute_max_string_len=absolute_max_string_len, output_size=lip_gen.get_output_size())
     lipnet.summary()
@@ -73,7 +73,7 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
     lipnet.model.fit_generator(generator=lip_gen.next_train(),
                                steps_per_epoch=lip_gen.default_training_steps, epochs=stop_epoch,
                                validation_data=lip_gen.next_val(), validation_steps=lip_gen.default_validation_steps,
-                               callbacks=[checkpoint, statistics, visualize, lip_gen, tensorboard, csv_logger],
+                               # callbacks=[checkpoint, statistics, visualize, lip_gen, tensorboard, csv_logger],
                                initial_epoch=start_epoch,
                                verbose=1,
                                max_q_size=5,
