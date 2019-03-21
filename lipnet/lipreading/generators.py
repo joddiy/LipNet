@@ -85,22 +85,23 @@ class BasicGenerator(keras.callbacks.Callback):
         for video_path in glob.glob(path):
             try:
                 if os.path.isfile(video_path):
-                    video = Video(self.vtype, self.face_predictor_path).from_video(video_path)
+                    video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_video(video_path)
                 else:
-                    video = Video(self.vtype, self.face_predictor_path).from_frames(video_path)
+                    video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_frames(video_path)
             except AttributeError as err:
                 raise err
             except Exception as e:
                 print(video_path)
                 print("Error loading video: " + video_path)
                 continue
+            print("Reading Video " + video_path, video.data.shape)
             if K.image_data_format() == 'channels_first' and video.data.shape[0] != self.img_c and video.data.shape[
-                2] != self.img_w and video.data.shape[3] != self.img_h and self.frames_n > 100:
+                2] != self.img_w and video.data.shape[3] != self.img_h and video.data.shape[1] > self.frames_n:
                 print("Video " + video_path + " has incorrect shape " + str(video.data.shape) + ", must be " + str(
                     (self.img_c, "<" + str(self.frames_n), self.img_w, self.img_h)) + "")
                 continue
             if K.image_data_format() != 'channels_first' and video.data.shape[1] != self.img_w and video.data.shape[
-                2] != self.img_h and video.data.shape[3] != self.img_c and self.frames_n > 100:
+                2] != self.img_h and video.data.shape[3] != self.img_c and video.data.shape[0] > self.frames_n:
                 print("Video " + video_path + " has incorrect shape " + str(video.data.shape) + ", must be " + str(
                     ("<" + str(self.frames_n), self.img_w, self.img_h, self.img_c)) + "")
                 continue
@@ -112,7 +113,7 @@ class BasicGenerator(keras.callbacks.Callback):
         for video_path in video_list:
             video_id = os.path.splitext(video_path)[0].split('/')[-1]
             align_path = os.path.join(self.align_path, video_id) + ".txt"
-            align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels, self.align_hash).from_file(
+            align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels, align_hash).from_file(
                 align_path)
         return align_hash
 
@@ -166,7 +167,7 @@ class BasicGenerator(keras.callbacks.Callback):
         input_length = []
         source_str = []
         for path in X_data_path:
-            video = Video().from_video(path)
+            video = Video('mouth', None, self.frames_n).from_video(path)
             align = self.get_align(path.split('/')[-1])
             video_unpadded_length = video.length
             if self.curriculum is not None:

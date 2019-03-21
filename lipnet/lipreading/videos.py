@@ -133,24 +133,31 @@ class VideoAugmenter(object):
 
 
 class Video(object):
-    def __init__(self, vtype='mouth', face_predictor_path=None):
+    def __init__(self, vtype='mouth', face_predictor_path=None, frames_n=None):
         if vtype == 'face' and face_predictor_path is None:
             raise AttributeError('Face video need to be accompanied with face predictor')
         self.face_predictor_path = face_predictor_path
         self.vtype = vtype
+        self.frames_n = frames_n
 
     def from_frames(self, path):
         # 从图片搜集
         frames_path = sorted([os.path.join(path, x) for x in os.listdir(path)])
         frames = [ndimage.imread(frame_path) for frame_path in frames_path]
         self.handle_type(frames)
-        return self
+        if self.frames_n is not None:
+            return VideoAugmenter.pad(self, self.frames_n)
+        else:
+            return self
 
     def from_video(self, path):
         # 从视频收集
         frames = self.get_video_frames(path)
         self.handle_type(frames)
-        return self
+        if self.frames_n is not None:
+            return VideoAugmenter.pad(self, self.frames_n)
+        else:
+            return self
 
     def from_array(self, frames):
         # 从数组收集
@@ -230,6 +237,7 @@ class Video(object):
     def get_video_frames(self, path):
         videogen = skvideo.io.vreader(path)
         frames = np.array([frame for frame in videogen])
+
         return frames
 
     def set_data(self, frames):

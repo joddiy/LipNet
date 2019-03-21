@@ -38,7 +38,11 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
                                    img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
                                    absolute_max_string_len=absolute_max_string_len,
                                    curriculum=curriculum, start_epoch=start_epoch).build(val_split=0.2)
-    return
+
+    for item in lip_gen.next_train():
+        print(item[0].X_data)
+        print(item[0].Y_data)
+        break
     lipnet = LipNet(img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
                     absolute_max_string_len=absolute_max_string_len, output_size=lip_gen.get_output_size())
     lipnet.summary()
@@ -79,4 +83,4 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
 
 if __name__ == '__main__':
     run_name = datetime.datetime.now().strftime('%Y:%m:%d:%H:%M:%S')
-    train(run_name, 0, 20, 3, 100, 50, 100, 32, 50)
+    train(run_name, 0, 20, 3, 100, 50, 100, 32, 10)
