@@ -113,7 +113,7 @@ class BasicGenerator(keras.callbacks.Callback):
         for video_path in video_list:
             video_id = os.path.splitext(video_path)[0].split('/')[-1]
             align_path = os.path.join(self.align_path, video_id) + ".txt"
-            align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels, align_hash).from_file(
+            align_hash[video_id] = Align(self.absolute_max_string_len, text_to_labels, self.align_map).from_file(
                 align_path)
         return align_hash
 
@@ -278,6 +278,7 @@ class RandomSplitGenerator(BasicGenerator):
             print("\nLoading dataset list from cache...")
             with open(self.get_cache_path(), 'rb') as fp:
                 self.train_list, self.val_list, self.align_hash, self.align_map = pickle.load(fp)
+
         else:
             print("\nEnumerating dataset list from disk...")
             video_list = self.enumerate_videos(os.path.join(self.video_path, '*', '*.MP4'))
