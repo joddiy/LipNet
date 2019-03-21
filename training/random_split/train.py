@@ -40,8 +40,8 @@ def train(run_name, start_epoch, stop_epoch, img_c, img_w, img_h, frames_n, abso
                                    curriculum=curriculum, start_epoch=start_epoch).build(val_split=0.2)
 
     for item in lip_gen.next_train():
-        print(item[0].X_data)
-        print(item[0].Y_data)
+        print(item[0]['the_input'])
+        print(item[0]['the_labels'])
         break
     lipnet = LipNet(img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
                     absolute_max_string_len=absolute_max_string_len, output_size=lip_gen.get_output_size())
