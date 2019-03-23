@@ -58,7 +58,7 @@ class ClassifyGenerator(keras.utils.Sequence):
         for i, ID in enumerate(list_IDs_temp):
             path = self.datasets[ID]
             video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_video(path)
-            print("read video: " + i)
+            print("read video: " + str(i))
             align = self.get_align(path.split('/')[-1])
             # video_unpadded_length = video.length
             # if self.curriculum is not None:
