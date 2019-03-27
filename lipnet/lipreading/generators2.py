@@ -1,3 +1,5 @@
+import os
+
 import keras
 import numpy as np
 
@@ -12,6 +14,7 @@ class ClassifyGenerator(keras.utils.Sequence):
     def __init__(self, list_IDs, datasets, align_hash, batch_size=32, curriculum=None, face_predictor_path=None,
                  vtype='face',
                  align_max_len=100,
+                 dataset_path=None,
                  frames_n=None,
                  shuffle=True):
         self.batch_size = batch_size
@@ -19,12 +22,13 @@ class ClassifyGenerator(keras.utils.Sequence):
         self.list_IDs = list_IDs
         self.datasets = datasets
         self.shuffle = shuffle
-        self.on_epoch_end()
         self.curriculum = curriculum
         self.vtype = vtype
         self.frames_n = frames_n
         self.align_max_len = align_max_len
         self.face_predictor_path = face_predictor_path
+        self.dataset_path = dataset_path
+        self.on_epoch_end()
 
     def __len__(self):
         return int(np.floor(len(self.list_IDs) / self.batch_size))
@@ -40,8 +44,9 @@ class ClassifyGenerator(keras.utils.Sequence):
 
         return X, y
 
-    def on_epoch_end(self):
+    def on_epoch_end(self, epoch=1, logs={}):
         self.indexes = np.arange(len(self.list_IDs))
+        self.curriculum.update(epoch, self.shuffle)
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
@@ -57,12 +62,14 @@ class ClassifyGenerator(keras.utils.Sequence):
 
         for i, ID in enumerate(list_IDs_temp):
             path = self.datasets[ID]
-            video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_video(path)
-            print("read video: " + str(i))
+            video_id = os.path.splitext(path)[0].split('/')[-1]
+            numpy_path = self.dataset_path + "/numpy/" + video_id + ".npy"
+            video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_numpy(numpy_path)
+            # print("read video: " + str(i))
             align = self.get_align(path.split('/')[-1])
-            # video_unpadded_length = video.length
-            # if self.curriculum is not None:
-            #     video, align, _ = self.curriculum.apply(video, align)
+            video_unpadded_length = video.length
+            if self.curriculum is not None:
+                video, align, _ = self.curriculum.apply(video, align)
             X_data.append(video.data)
             Y_data.append(align.padded_label)
             label_length.append(align.label_length)  # CHANGED [A] -> A, CHECK!

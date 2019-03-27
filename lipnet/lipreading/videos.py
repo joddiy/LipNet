@@ -150,6 +150,12 @@ class Video(object):
         else:
             return self
 
+    def from_numpy(self, path):
+        # 从numpy收集
+        frames = np.load(path)
+        self.handle_type(frames)
+        return self
+
     def from_video(self, path):
         # 从视频收集
         frames = self.get_video_frames(path)

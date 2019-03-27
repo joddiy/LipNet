@@ -30,7 +30,7 @@ class BasicGenerator(keras.callbacks.Callback):
         self.cur_val_index = multiprocessing.Value('i', 0)
         self.curriculum = kwargs.get('curriculum', None)
         self.random_seed = kwargs.get('random_seed', 13)
-        self.vtype = kwargs.get('vtype', 'mouth')
+        self.vtype = kwargs.get('vtype', 'face')
         self.face_predictor_path = kwargs.get('face_predictor_path', None)
         self.steps_per_epoch = kwargs.get('steps_per_epoch', None)
         self.validation_steps = kwargs.get('validation_steps', None)
@@ -88,6 +88,8 @@ class BasicGenerator(keras.callbacks.Callback):
                     video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_video(video_path)
                 else:
                     video = Video(self.vtype, self.face_predictor_path, self.frames_n).from_frames(video_path)
+                video_id = os.path.splitext(video_path)[0].split('/')[-1]
+                np.save(self.dataset_path + "/numpy/" + video_id, video.mouth)
             except AttributeError as err:
                 raise err
             except Exception as e:

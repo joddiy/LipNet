@@ -40,6 +40,7 @@ def train(run_name, max_epoch, img_c, img_w, img_h, frames_n, absolute_max_strin
     lip_gen = RandomSplitGenerator(dataset_path=DATASET_DIR,
                                    minibatch_size=minibatch_size,
                                    img_c=img_c, img_w=img_w, img_h=img_h, frames_n=frames_n,
+                                   face_predictor_path=FACE_PREDICTOR,
                                    absolute_max_string_len=absolute_max_string_len,
                                    curriculum=curriculum).build(val_split=0.2)
 
@@ -55,24 +56,38 @@ def train(run_name, max_epoch, img_c, img_w, img_h, frames_n, absolute_max_strin
     training_generator = ClassifyGenerator(range(len(lip_gen.train_list)), lip_gen.train_list, lip_gen.align_hash,
                                            minibatch_size,
                                            curriculum=curriculum,
+                                           dataset_path=DATASET_DIR,
                                            face_predictor_path=FACE_PREDICTOR,
                                            align_max_len=absolute_max_string_len,
-                                           vtype='face',
+                                           vtype='mouth',
                                            frames_n=frames_n)
     validation_generator = ClassifyGenerator(range(len(lip_gen.val_list)), lip_gen.val_list, lip_gen.align_hash,
                                              minibatch_size,
                                              curriculum=curriculum,
+                                             dataset_path=DATASET_DIR,
                                              face_predictor_path=FACE_PREDICTOR,
                                              align_max_len=absolute_max_string_len,
-                                             vtype='face',
+                                             vtype='mouth',
                                              frames_n=frames_n,
                                              shuffle=False)
+    # define callbacks
+    spell = Spell(path=PREDICT_DICTIONARY)
+    decoder = Decoder(greedy=PREDICT_GREEDY, beam_width=PREDICT_BEAM_WIDTH,
+                      postprocessors=[labels_to_text, spell.sentence])
+
+    statistics = Statistics(lipnet, lip_gen.next_val(), decoder, 256, output_dir=os.path.join(OUTPUT_DIR, run_name))
+    visualize = Visualize(os.path.join(OUTPUT_DIR, run_name), lipnet, lip_gen.next_val(), decoder,
+                          num_display_sentences=minibatch_size)
+    tensorboard = TensorBoard(log_dir=os.path.join(LOG_DIR, run_name))
+    csv_logger = CSVLogger(os.path.join(LOG_DIR, "{}-{}.csv".format('training', run_name)), separator=',', append=True)
+    checkpoint = ModelCheckpoint(os.path.join(OUTPUT_DIR, run_name, "weights{epoch:02d}.h5"), monitor='val_loss',
+                                 save_weights_only=True, mode='auto', period=1)
 
     lipnet.model.fit_generator(generator=training_generator,
                                validation_data=validation_generator,
                                use_multiprocessing=True,
                                epochs=max_epoch,
-                               workers=2,
+                               workers=4,
                                # callbacks=[checkpoint, statistics, visualize, lip_gen, tensorboard, csv_logger],
                                )
 
